@@ -37,7 +37,7 @@ atomContent (_, s) = s
 
 nextIsNonAlpha :: String -> Bool
 nextIsNonAlpha []    = True
-nextIsNonAlpha (x:_) = isAlpha x
+nextIsNonAlpha (x:_) = not (isAlpha x)
 
 tokenize :: String -> [Atom String]
 tokenize [] = []

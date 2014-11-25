@@ -120,10 +120,16 @@ instance Monoid ImportOpts where
 imports allArgs = do
     mapM_ findFileImports allArgs
   where findFileImports f = do
+            putStrLn ("processing " ++ show f)
             tokens <- readHaskellAtoms f
+            c <- createChunks tokens
+            {-
             let importSyntax = importParseTokens tokens
-            putStrLn $ show importSyntax
+            -}
+            --putStrLn ("chunks: " ++ show c)
+            putStrLn "done"
 
+        {-
         importParseTokens ((Import,_): (Spaces,_): (Symbol,"qualified"): (Spaces,_): xs) =
             let (mn, r) = parseModuleName xs
              in (mn, True) : importParseTokens r
@@ -139,6 +145,7 @@ imports allArgs = do
         isSpaces (Spaces,_)  = True
         isSpaces (Newline,_) = True
         isSpaces _           = False
+        -}
 
 help _ =
     mapM_ putStrLn
