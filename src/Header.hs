@@ -5,6 +5,8 @@ import Data.Char
 import Data.List
 import Lexer.Haskell (AtomType(..))
 import HaskellOps
+import System.FilePath
+import System.IO
 
 data TAtom = Text String | Var String deriving (Show)
 type Template = [TAtom]
@@ -24,17 +26,38 @@ header allArgs = do
                 f:r                     -> parseArgs accTemplate (f:accFiles) r
         headerize :: Template -> FilePath -> IO ()
         headerize template file = do
-            let templateContent = renderTemplate template []
-            (before, moduleStart) <- break isModule <$> readHaskellAtoms file
-            let newTokens = [(Other, templateContent)]
-                         ++ intersperse (Newline,"\n") (filter isPragma before)
-                         ++ [(Newline,"\n")]
-                         ++ moduleStart
-            writeHaskellAtoms file newTokens
+            let templateContent = renderTemplate template
+                    [ ("FILEPATH", file)
+                    , ("FILENAME", takeFileName file)
+                    , ("MODULE", fileToModule file)
+                    ]
+
+            hasHeaderAlready <- checkHeader templateContent file
+
+            if hasHeaderAlready
+                then do
+                    hPutStrLn stderr (file ++ ": already compliant")
+                else do
+                    (before, moduleStart) <- break isModule <$> readHaskellAtoms file
+                    let newTokens = [(Other, templateContent)]
+                                 ++ intersperse (Newline,"\n") (filter isPragma before)
+                                 ++ [(Newline,"\n")]
+                                 ++ moduleStart
+                    writeHaskellAtoms file newTokens
         isModule (Module,_) = True
         isModule _          = False
         isPragma (Pragma,_) = True
         isPragma _          = False
+
+        fileToModule file =
+            intercalate "." $ map (capitalize . takeBaseName . dropTrailingPathSeparator) $ splitPath $ dropRelative file
+          where capitalize []     = []
+                capitalize (x:xs) = toUpper x : xs
+                dropRelative ('.':'/':l) = l
+                dropRelative l           = l
+
+        checkHeader templateContent file =
+            isPrefixOf templateContent <$> readFile file
 
 renderTemplate :: Template -> [(String,String)] -> String
 renderTemplate template attrs =
