@@ -158,6 +158,7 @@ help _ =
         , ""
         , "  move <module-name> <new-module-name>"
         , ""
+        , "  deunicode <directory>"
         ]
 
 main = do
