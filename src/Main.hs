@@ -1,6 +1,5 @@
 module Main where
 
-import Control.Applicative
 import System.Environment
 import System.Directory
 import System.FilePath
@@ -8,9 +7,9 @@ import Data.List
 --import Data.String.Parse
 import Data.Monoid
 import SafeFile
-import Lexer.Haskell (AtomType(..))
 import HaskellOps
 import Traverse
+import Header
 
 usage = error "usage: hsco <subcommand> [subopts]"
 
@@ -68,32 +67,6 @@ deunicode args = do
                         'π' -> "pi"
                         _   -> [x]
              in z ++ toAscii xs
-
-header allArgs = do
-    case parseArgs Nothing [] allArgs of
-        (Nothing      , _)        -> error "no template specified. use --template <template>"
-        (_            , [])       -> error "no haskell files specified"
-        (Just template, allFiles) -> do
-            templateContent <- readFile template
-            mapM_ (headerize templateContent) allFiles
-
-  where parseArgs accTemplate accFiles args =
-            case args of
-                []                      -> (accTemplate, accFiles)
-                "--template":template:r -> parseArgs (Just template) accFiles r
-                f:r                     -> parseArgs accTemplate (f:accFiles) r
-        headerize :: String -> FilePath -> IO ()
-        headerize templateContent file = do
-            (before, moduleStart) <- break isModule <$> readHaskellAtoms file
-            let newTokens = [(Other, templateContent)]
-                         ++ intersperse (Newline,"\n") (filter isPragma before)
-                         ++ [(Newline,"\n")]
-                         ++ moduleStart
-            writeHaskellAtoms file newTokens
-        isModule (Module,_) = True
-        isModule _          = False
-        isPragma (Pragma,_) = True
-        isPragma _          = False
 
 debugTokenize args = do
     case args of
