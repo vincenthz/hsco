@@ -74,19 +74,6 @@ createChunks atomsAll = do
                                       bodyStart
                 
   where 
-        {-
-        groupParens = first reverse . loop [(LParen, "(")] 0
-          where loop :: [Atom String] -> Int -> [Atom String] -> ([Atom String], [Atom String])
-                loop acc _    []     = (acc, [])
-                loop acc !lvl (x:xs) =
-                    case x of
-                        (LParen, _)     -> loop (x:acc) (lvl+1) xs
-                        (RParen, _)
-                            | lvl == 0  -> (x:acc, xs)
-                            | otherwise -> loop (x:acc) (lvl-1) xs
-                        _               -> loop (x:acc) lvl xs
-        -}
-
         getImports :: [Import [Atom String]] -> View [Import [Atom String]]
         getImports acc = do
             viewDebug "getImports"
@@ -98,22 +85,6 @@ createChunks atomsAll = do
                     getImports (importTokens : acc)
                 else do
                     return (reverse acc)
-    {-
-                    x <- viewPeek 1
-                    --putStrLn $ show x
-                    viewConsume 1
-                    getImports acc
--}
-
-        -- split until a specific atom type has been found
-        {-
-        splitUntilAfter :: AtomType -> [Atom a] -> ([Atom a], [Atom a])
-        splitUntilAfter expectedTy = reverse . loop []
-          where loop acc []            = (acc, [])
-                loop acc (x@(ty,_):xs)
-                    | expectedTy == ty = (x:acc, xs)
-                    | otherwise        = loop (x:acc) xs
-        -}
 
         consumeImport :: View (Import [Atom String])
         consumeImport = do
@@ -132,38 +103,26 @@ createChunks atomsAll = do
             isHiding <- viewNextEqConsume (Symbol, "hiding")
             hasList <- viewNextEqConsume (LParen, "(")
             listImport <- if hasList
-                then undefined -- eat stuff
+                then Just <$> eatList
                 else return Nothing
             return $ ImportSyn isQualified symbol asModule (ImportNoRestrict)
 
         spaceFilter x = atomIs Spaces x || atomIs Newline x
-{-
-        -- import [qualified] ...
-        getImport t@((Import,_): (Spaces,_): (Symbol,"qualified"): (Spaces,_): xs) =
-            getImportMN (reverse $ take 4 t) True xs
-        getImport t@((Import,_): (Spaces,_): xs) =
-            getImportMN (reverse $ take 2 t) False xs
 
-        -- module name ...
-        getImportMN acc isQualified xs =
-            let (moduleName, r) = break (atomIs Spaces) xs
-             in getImportAs (reverse moduleName++acc) (isQualified, moduleName) r
-        -- as ...
-        getImportAs acc (isQualified, moduleName) t@((Spaces,_): (Symbol,"as"): (Spaces,_):xs) =
-            let (asName, r) = break (atomIs Spaces) xs
-             in getImportList (reverse (take 3 t) ++ acc) (isQualified, moduleName, Just asName)
-        getImportAs acc (isQualified, moduleName) xs =
-            getImportList acc (isQualified, moduleName, Nothing) xs
-        -- [ [hiding] (...) ]
-        getImportList acc (isQualified, mn, as) t@((Symbol, "hiding"): (Spaces,_): (LParen,_):xs) =
-            let (inside, r) = groupParens xs
-             in (reverse acc ++ inside, (isQualified, mn, as, ImportHiding undefined), xs)
-        getImportList acc (isQualified, mn, as) ((LParen,_):xs) =
-            let (inside, r) = groupParens xs
-             in (reverse acc ++ inside, (isQualified, mn, as, ImportShowing inside), xs)
-        getImportList acc (isQualified, mn, as) xs =
-            (reverse acc, (isQualified, mn, as, ImportNoRestrict), xs)
--}
+        eatList = loop 0
+          where loop :: Int -> View ()
+                loop !n = do
+                    l <- viewPeek 1
+                    case l of
+                        []  -> return ()
+                        x:_ -> do
+                            viewConsume 1
+                            case x of
+                                (LParen, _)     -> loop (n+1)
+                                (RParen, _)
+                                    | n == 0    -> return ()
+                                    | otherwise -> loop (n-1)
+                                _               -> loop n
 
 flattenChunks :: SourceChunks -> [Atom String]
 flattenChunks sourceChunks = concat

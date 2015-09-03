@@ -41,15 +41,15 @@ makeView filterF current viewF =
                        , viewRecord      = []
                        , viewFilter      = filterF }
 
-splitAt :: (Atom String -> Bool) -> Int -> [Atom String] -> ([Atom String], [Atom String])
-splitAt filterF n = first reverse . loop [] 0
+splitAt :: Bool -> (Atom String -> Bool) -> Int -> [Atom String] -> ([Atom String], [Atom String])
+splitAt keepFiltered filterF n = first reverse . loop [] 0
   where loop acc _ [] = (acc, [])
         loop acc i l@(x:xs)
             | i == n    = (acc, l)
-            | filterF x = loop (x:acc) n xs
+            | filterF x = if keepFiltered then loop (x:acc) n xs else loop acc n xs
             | otherwise = loop (x:acc) (n+1) xs
 
-takeFiltered filterF n l = filter (not . filterF) $ fst $ splitAt filterF n l
+takeFiltered filterF n l = fst $ splitAt False filterF n l
 
 viewPeek :: Int -> View [Atom String]
 viewPeek n = do
@@ -59,7 +59,7 @@ viewPeek n = do
 viewConsume :: Int -> View ()
 viewConsume n = do
     st <-  get
-    let (l,r) = splitAt (viewFilter st) n $ viewCurrent st
+    let (l,r) = splitAt True (viewFilter st) n $ viewCurrent st
     put $ st { viewCurrent = r, viewEaten = reverse l ++ viewEaten st }
 
 viewConsumeFiltered :: View ()
@@ -86,14 +86,15 @@ viewNextEqConsume :: Atom String -> View Bool
 viewNextEqConsume expectedAtom = do
     st <-  get
     case takeFiltered (viewFilter st) 1 $ viewCurrent st of
-        []       -> return False
-        (atom:_) | expectedAtom == atom -> viewConsume 1 >> return True
-                 | otherwise            -> return False
+        []       -> liftIO (putStrLn ("uhm: " ++ show (splitAt True (viewFilter st) 1 $ viewCurrent st))) >> return False
+        (atom:_) | expectedAtom == atom -> liftIO (putStrLn ("matched " ++ show expectedAtom)) >> viewConsume 1 >> return True
+                 | otherwise            -> liftIO $ putStrLn ("viewNextEqConsume: " ++ show atom ++ " was expecting " ++ show expectedAtom) >> return False
 
 viewNoFilterBreak :: (Atom String -> Bool) -> View [Atom String]
 viewNoFilterBreak stopPoint = do
     st <-  get
     let (l,r) = break stopPoint $ viewCurrent st
+    --liftIO $ putStrLn ("noFilterBreak: " ++ show l ++ " <=> " ++ show (take 3 r))
     put $ st { viewCurrent = r, viewEaten = reverse l ++ viewEaten st }
     return l
 
