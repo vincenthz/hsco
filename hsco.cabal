@@ -35,9 +35,12 @@ source-repository head
 
 Executable           hsco
   Main-Is:           Main.hs
-  other-modules:     HaskellOps
+  other-modules:     Deunicode
+                     HaskellOps
+                     Header
                      Traverse
                      SafeFile
+                     View
                      Lexer.Haskell
                      Lexer.Cabal
                      Data.String.Parse
