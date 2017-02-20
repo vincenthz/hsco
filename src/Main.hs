@@ -7,6 +7,7 @@ import HaskellOps
 
 import Header
 import Deunicode
+import Externals
 
 usage = error "usage: hsco <subcommand> [subopts]"
 
@@ -74,6 +75,8 @@ help _ =
         , "  move <module-name> <new-module-name>"
         , ""
         , "  deunicode <directory>"
+        , ""
+        , "  externals <subcommand>"
         ]
 
 main = do
@@ -89,5 +92,6 @@ main = do
                 "header"         -> header args
                 "imports"        -> imports args
                 "debug-tokenize" -> debugTokenize args
+                "externals"      -> externals args
                 --"debug-compile"  -> debugCompile args
                 _                -> error $ "unknown command " ++ cmd

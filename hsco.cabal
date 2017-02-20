@@ -36,6 +36,7 @@ source-repository head
 Executable           hsco
   Main-Is:           Main.hs
   other-modules:     Deunicode
+                     Externals
                      HaskellOps
                      Header
                      Traverse
@@ -49,8 +50,10 @@ Executable           hsco
   Build-depends:     base >= 4 && < 5
                    , directory
                    , filepath
+                   , cryptonite
+                   , bytestring
                    , unix
                    , transformers
                    , mtl
-                   , mtl
+                   , csv
   default-language:  Haskell2010
